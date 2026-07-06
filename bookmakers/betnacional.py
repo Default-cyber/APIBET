@@ -74,13 +74,14 @@ class BetnacionalScraper:
                     
             await page.close()
         except Exception as e:
+            error_msg = str(e)
             print(f"Error scraping Betnacional: {e}")
             
         if not matches:
              matches.append(Match(
                  id="betn_err", 
                  team_home="Betnacional - AntiBot", 
-                 team_away="Bloqueou", 
+                 team_away=error_msg[:50] if 'error_msg' in locals() else "Bloqueou", 
                  league="Erro", 
                  start_time="N/A", 
                  odds=[Odd(label="1", value=1.0, bookmaker=self.name), Odd(label="X", value=1.0, bookmaker=self.name), Odd(label="2", value=1.0, bookmaker=self.name)]
