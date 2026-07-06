@@ -36,9 +36,11 @@ from bookmakers.betboom import BetBoomScraper
 bookmakers = [
     BetnacionalScraper(), 
     SportingbetScraper(), 
+    NovibetScraper(),
+    BetssonScraper(),
     
     # --- MOCKED SCRAPERS DESLIGADOS PARA A PROVA DE CONCEITO ---
-    # NovibetScraper(), BetssonScraper(), GalerabetScraper(), 
+    # GalerabetScraper(), 
     # CasadeApostasScraper(), BetSulScraper(), BetFastScraper(), 
     # VBetScraper(), SeteGamesScraper(), ApostaGanhaScraper(), 
     # BrazinoSeteSeteSeteScraper(), ReidoPitacoScraper(), BrasilBetScraper(), 
