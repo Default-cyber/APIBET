@@ -61,7 +61,7 @@ class BetnacionalScraper:
                             Odd(label="2", value=3.40, bookmaker=self.name),
                         ]
                         
-                            matches.append(
+                    matches.append(
                         Match(
                             id=f"betn_real_{idx}",
                             team_home=home,
