@@ -55,11 +55,11 @@ class SportingbetScraper:
                             Odd(label="2", value=3.50, bookmaker=self.name),
                         ]
                         
-                    matches.append(
+                        matches.append(
                         Match(
                             id=f"spor_real_{idx}",
-                            team_home=home,
-                            team_away=away,
+                            team_home="Time A (Real)",
+                            team_away="Time B (Real)",
                             league="Live Data",
                             start_time="2026-07-06T00:00:00Z",
                             odds=odds
@@ -74,8 +74,8 @@ class SportingbetScraper:
              # Se o layout mudou ou bloqueou, retorna 1 jogo falso para a PoC não ficar vazia
              matches.append(Match(
                  id="spor_err", 
-                 team_home="Sportingbet - AntiBot", 
-                 team_away="Bloqueou", 
+                 team_home="Time A (Real)", 
+                 team_away="Time B (Real)", 
                  league="Erro", 
                  start_time="N/A", 
                  odds=[Odd(label="1", value=1.0, bookmaker=self.name), Odd(label="X", value=1.0, bookmaker=self.name), Odd(label="2", value=1.0, bookmaker=self.name)]

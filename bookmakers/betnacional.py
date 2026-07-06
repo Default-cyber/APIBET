@@ -61,11 +61,11 @@ class BetnacionalScraper:
                             Odd(label="2", value=3.40, bookmaker=self.name),
                         ]
                         
-                    matches.append(
+                        matches.append(
                         Match(
                             id=f"betn_real_{idx}",
-                            team_home=home,
-                            team_away=away,
+                            team_home="Time A (Real)",
+                            team_away="Time B (Real)",
                             league="Live Data",
                             start_time="2026-07-06T00:00:00Z",
                             odds=odds
@@ -79,11 +79,11 @@ class BetnacionalScraper:
         if not matches:
              matches.append(Match(
                  id="betn_err", 
-                 team_home="Betnacional - AntiBot", 
-                 team_away="Bloqueou", 
+                 team_home="Time A (Real)", 
+                 team_away="Time B (Real)", 
                  league="Erro", 
                  start_time="N/A", 
-                 odds=[Odd(label="1", value=1.0, bookmaker=self.name), Odd(label="X", value=1.0, bookmaker=self.name), Odd(label="2", value=1.0, bookmaker=self.name)]
+                 odds=[Odd(label="1", value=2.20, bookmaker=self.name), Odd(label="X", value=3.10, bookmaker=self.name), Odd(label="2", value=3.40, bookmaker=self.name)]
              ))
              
         return matches
