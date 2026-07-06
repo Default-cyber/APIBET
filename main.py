@@ -12,7 +12,7 @@ from bookmakers.casadeapostas import CasadeApostasScraper
 from bookmakers.betsul import BetSulScraper
 from bookmakers.betfast import BetFastScraper
 from bookmakers.vbet import VBetScraper
-from bookmakers.7games import SeteGamesScraper
+from bookmakers.setegames import SeteGamesScraper
 from bookmakers.apostaganha import ApostaGanhaScraper
 from bookmakers.brazino777 import BrazinoSeteSeteSeteScraper
 from bookmakers.reidopitaco import ReidoPitacoScraper
