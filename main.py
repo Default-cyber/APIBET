@@ -78,40 +78,68 @@ async def fetch_with_semaphore(bm):
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Casas de Apostas (Fase 3 Otimizada)"}
+    return {"message": "Bem-vindo à API de Casas de Apostas (Fase 4 Assíncrona)"}
 
+from fastapi import BackgroundTasks
 import time
 
-# Variáveis globais para o Cache
+# Variáveis globais para o Cache e Estado
 CACHE_DURATION = 15 * 60  # 15 minutos
 cached_matches = []
 last_cache_time = 0
+is_scraping_in_progress = False
 
-@app.get("/jogos", response_model=List[Match])
-async def get_all_matches():
-    global cached_matches, last_cache_time
+async def perform_scraping():
+    global cached_matches, last_cache_time, is_scraping_in_progress
+    
+    try:
+        print("Iniciando rotina de extração em segundo plano...")
+        tasks = [fetch_with_semaphore(bm) for bm in bookmakers]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        all_matches = []
+        for result in results:
+            if isinstance(result, list):
+                all_matches.extend(result)
+            else:
+                print(f"Erro na extração: {result}")
+                
+        if all_matches:
+            cached_matches = all_matches
+            last_cache_time = time.time()
+            print(f"Cache populado com sucesso! ({len(all_matches)} itens)")
+            
+    finally:
+        is_scraping_in_progress = False
+
+@app.get("/jogos")
+async def get_all_matches(background_tasks: BackgroundTasks):
+    global cached_matches, last_cache_time, is_scraping_in_progress
     
     current_time = time.time()
     
-    # Se o cache existe e ainda está no prazo de validade, devolvemos ele (muito rápido e leve)
+    # 1. Se o cache existe e ainda está no prazo de validade, devolvemos ele instantaneamente
     if cached_matches and (current_time - last_cache_time) < CACHE_DURATION:
-        print(f"Retornando do cache... (Tempo restante: {int(CACHE_DURATION - (current_time - last_cache_time))}s)")
-        return cached_matches
+        return {
+            "status": "success",
+            "message": f"Dados retornados do cache. Validade: {int(CACHE_DURATION - (current_time - last_cache_time))}s restantes",
+            "matches": cached_matches
+        }
 
-    print("Cache expirado ou vazio. Buscando dados novos nas casas de aposta...")
-    tasks = [fetch_with_semaphore(bm) for bm in bookmakers]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    all_matches = []
-    for result in results:
-        if isinstance(result, list):
-            all_matches.extend(result)
-        else:
-            print(f"Erro na extração: {result}")
-            
-    # Se conseguiu buscar jogos, salva os dados novos no cache e tira o antigo
-    if all_matches:
-        cached_matches = all_matches
-        last_cache_time = current_time
+    # 2. Se a raspagem já está rolando, avisamos o usuário
+    if is_scraping_in_progress:
+        return {
+            "status": "processing",
+            "message": "Os robôs já estão trabalhando na extração. Por favor, aguarde cerca de 1 minuto e atualize a página.",
+            "matches": cached_matches # Retorna o cache antigo se existir
+        }
         
-    return all_matches
+    # 3. Cache expirou e raspagem não está rolando: dispara a raspagem no fundo e avisa
+    is_scraping_in_progress = True
+    background_tasks.add_task(perform_scraping)
+    
+    return {
+        "status": "processing",
+        "message": "Nenhum dado recente no cache. Os robôs foram acionados agora. Por favor, aguarde cerca de 1 a 2 minutos e atualize a página.",
+        "matches": cached_matches # Retorna o cache antigo se existir
+    }
