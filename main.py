@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from typing import List
 import asyncio
+import json
+import os
 from contextlib import asynccontextmanager
 from playwright.async_api import async_playwright
 
@@ -31,34 +33,6 @@ from bookmakers.big import BigScraper
 from bookmakers.apostar import ApostarScraper
 from bookmakers.betboom import BetBoomScraper
 
-# Globals for Playwright
-playwright_instance = None
-browser = None
-global_context = None
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global playwright_instance, browser, global_context
-    print("Iniciando Playwright Global...")
-    playwright_instance = await async_playwright().start()
-    browser = await playwright_instance.chromium.launch(headless=True)
-    global_context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-    yield
-    print("Desligando Playwright Global...")
-    if global_context:
-        await global_context.close()
-    if browser:
-        await browser.close()
-    if playwright_instance:
-        await playwright_instance.stop()
-
-app = FastAPI(
-    title="Betting Odds Aggregator API",
-    description="API que agrega odds de 25 casas de apostas (Otimizada e Leve)",
-    version="3.0.0",
-    lifespan=lifespan
-)
-
 bookmakers = [
     BetnacionalScraper(), SportingbetScraper(), NovibetScraper(),
     BetssonScraper(), GalerabetScraper(), CasadeApostasScraper(),
@@ -69,77 +43,96 @@ bookmakers = [
     CaesarsScraper(), BigScraper(), ApostarScraper(), BetBoomScraper()
 ]
 
-# Semáforo limitando a 1 execução simultânea (para não estourar os 512MB do Render)
-semaphore = asyncio.Semaphore(1)
+# Flag para parar o loop quando o servidor desligar
+keep_scraping = True
 
-async def fetch_with_semaphore(bm):
-    async with semaphore:
-        return await bm.get_matches(global_context)
+async def scraping_loop():
+    print("Iniciando rotina de extração invisível (Background Task)...")
+    while keep_scraping:
+        try:
+            print("====================================")
+            print("Abrindo navegador Playwright...")
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                
+                all_matches = []
+                
+                # Executa uma por vez para gastar o mínimo de RAM possível
+                for bm in bookmakers:
+                    if not keep_scraping:
+                        break
+                    print(f"Extraindo: {bm.name}...")
+                    try:
+                        matches = await bm.get_matches(context)
+                        if matches:
+                            all_matches.extend(matches)
+                    except Exception as e:
+                        print(f"Falha ao extrair {bm.name}: {e}")
+                
+                # Desliga o navegador completamente para limpar a RAM do servidor
+                await context.close()
+                await browser.close()
+            
+            # Converte os resultados para Dicionários (para facilitar salvar em JSON)
+            if all_matches:
+                print(f"Extração concluída com sucesso. Salvando {len(all_matches)} itens no arquivo dados.json...")
+                data_to_save = [match.model_dump() if hasattr(match, 'model_dump') else match.dict() for match in all_matches]
+                
+                # Salva o resultado num arquivo físico
+                with open("dados.json", "w", encoding="utf-8") as f:
+                    json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+            
+            print("Dormindo por 60 segundos...")
+            await asyncio.sleep(60)
+            
+        except Exception as main_e:
+            print(f"Erro no loop principal: {main_e}")
+            await asyncio.sleep(60) # Espera e tenta de novo
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global keep_scraping
+    keep_scraping = True
+    # Dispara a tarefa em loop silencioso no fundo da aplicação
+    asyncio.create_task(scraping_loop())
+    yield
+    print("Desligando aplicação...")
+    keep_scraping = False
+
+app = FastAPI(
+    title="Betting Odds Aggregator API",
+    description="API Estática Leve (Fase 5)",
+    version="5.0.0",
+    lifespan=lifespan
+)
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Casas de Apostas (Fase 4 Assíncrona)"}
-
-from fastapi import BackgroundTasks
-import time
-
-# Variáveis globais para o Cache e Estado
-CACHE_DURATION = 15 * 60  # 15 minutos
-cached_matches = []
-last_cache_time = 0
-is_scraping_in_progress = False
-
-async def perform_scraping():
-    global cached_matches, last_cache_time, is_scraping_in_progress
-    
-    try:
-        print("Iniciando rotina de extração em segundo plano...")
-        tasks = [fetch_with_semaphore(bm) for bm in bookmakers]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        all_matches = []
-        for result in results:
-            if isinstance(result, list):
-                all_matches.extend(result)
-            else:
-                print(f"Erro na extração: {result}")
-                
-        if all_matches:
-            cached_matches = all_matches
-            last_cache_time = time.time()
-            print(f"Cache populado com sucesso! ({len(all_matches)} itens)")
-            
-    finally:
-        is_scraping_in_progress = False
+    return {"message": "Bem-vindo à API de Casas de Apostas (Fase 5: Leitura de Arquivo)"}
 
 @app.get("/jogos")
-async def get_all_matches(background_tasks: BackgroundTasks):
-    global cached_matches, last_cache_time, is_scraping_in_progress
+async def get_all_matches():
+    """
+    Esta rota NÃO faz extração. Ela apenas lê o arquivo 'dados.json' super leve
+    e cospe na tela imediatamente. 
+    """
+    file_path = "dados.json"
     
-    current_time = time.time()
-    
-    # 1. Se o cache existe e ainda está no prazo de validade, devolvemos ele instantaneamente
-    if cached_matches and (current_time - last_cache_time) < CACHE_DURATION:
-        return {
-            "status": "success",
-            "message": f"Dados retornados do cache. Validade: {int(CACHE_DURATION - (current_time - last_cache_time))}s restantes",
-            "matches": cached_matches
-        }
-
-    # 2. Se a raspagem já está rolando, avisamos o usuário
-    if is_scraping_in_progress:
+    if not os.path.exists(file_path):
         return {
             "status": "processing",
-            "message": "Os robôs já estão trabalhando na extração. Por favor, aguarde cerca de 1 minuto e atualize a página.",
-            "matches": cached_matches # Retorna o cache antigo se existir
+            "message": "O arquivo de dados ainda não foi criado. O robô está gerando agora no fundo. Volte em alguns segundos.",
+            "matches": []
         }
-        
-    # 3. Cache expirou e raspagem não está rolando: dispara a raspagem no fundo e avisa
-    is_scraping_in_progress = True
-    background_tasks.add_task(perform_scraping)
     
-    return {
-        "status": "processing",
-        "message": "Nenhum dado recente no cache. Os robôs foram acionados agora. Por favor, aguarde cerca de 1 a 2 minutos e atualize a página.",
-        "matches": cached_matches # Retorna o cache antigo se existir
-    }
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            dados = json.load(f)
+        return dados
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Falha ao ler o arquivo json: {e}",
+            "matches": []
+        }
