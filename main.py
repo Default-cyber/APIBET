@@ -69,8 +69,8 @@ bookmakers = [
     CaesarsScraper(), BigScraper(), ApostarScraper(), BetBoomScraper()
 ]
 
-# Semáforo limitando a 5 execuções simultâneas
-semaphore = asyncio.Semaphore(5)
+# Semáforo limitando a 1 execução simultânea (para não estourar os 512MB do Render)
+semaphore = asyncio.Semaphore(1)
 
 async def fetch_with_semaphore(bm):
     async with semaphore:
@@ -80,8 +80,25 @@ async def fetch_with_semaphore(bm):
 def read_root():
     return {"message": "Bem-vindo à API de Casas de Apostas (Fase 3 Otimizada)"}
 
+import time
+
+# Variáveis globais para o Cache
+CACHE_DURATION = 15 * 60  # 15 minutos
+cached_matches = []
+last_cache_time = 0
+
 @app.get("/jogos", response_model=List[Match])
 async def get_all_matches():
+    global cached_matches, last_cache_time
+    
+    current_time = time.time()
+    
+    # Se o cache existe e ainda está no prazo de validade, devolvemos ele (muito rápido e leve)
+    if cached_matches and (current_time - last_cache_time) < CACHE_DURATION:
+        print(f"Retornando do cache... (Tempo restante: {int(CACHE_DURATION - (current_time - last_cache_time))}s)")
+        return cached_matches
+
+    print("Cache expirado ou vazio. Buscando dados novos nas casas de aposta...")
     tasks = [fetch_with_semaphore(bm) for bm in bookmakers]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
@@ -92,4 +109,9 @@ async def get_all_matches():
         else:
             print(f"Erro na extração: {result}")
             
+    # Se conseguiu buscar jogos, salva os dados novos no cache e tira o antigo
+    if all_matches:
+        cached_matches = all_matches
+        last_cache_time = current_time
+        
     return all_matches
