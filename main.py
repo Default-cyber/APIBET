@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from typing import List
 import asyncio
+from contextlib import asynccontextmanager
+from playwright.async_api import async_playwright
 
 from models import Match
 from bookmakers.betnacional import BetnacionalScraper
@@ -29,51 +31,58 @@ from bookmakers.big import BigScraper
 from bookmakers.apostar import ApostarScraper
 from bookmakers.betboom import BetBoomScraper
 
+# Globals for Playwright
+playwright_instance = None
+browser = None
+global_context = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global playwright_instance, browser, global_context
+    print("Iniciando Playwright Global...")
+    playwright_instance = await async_playwright().start()
+    browser = await playwright_instance.chromium.launch(headless=True)
+    global_context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+    yield
+    print("Desligando Playwright Global...")
+    if global_context:
+        await global_context.close()
+    if browser:
+        await browser.close()
+    if playwright_instance:
+        await playwright_instance.stop()
+
 app = FastAPI(
     title="Betting Odds Aggregator API",
-    description="API que agrega odds de diferentes casas de apostas em tempo real",
-    version="2.0.0"
+    description="API que agrega odds de 25 casas de apostas (Otimizada e Leve)",
+    version="3.0.0",
+    lifespan=lifespan
 )
 
-# Registramos TODOS os 25 scrapers das casas de apostas suportadas (Fase 2)
 bookmakers = [
-    BetnacionalScraper(),
-    SportingbetScraper(),
-    NovibetScraper(),
-    BetssonScraper(),
-    GalerabetScraper(),
-    CasadeApostasScraper(),
-    BetSulScraper(),
-    BetFastScraper(),
-    VBetScraper(),
-    SeteGamesScraper(),
-    ApostaGanhaScraper(),
-    BrazinoSeteSeteSeteScraper(),
-    ReidoPitacoScraper(),
-    BrasilBetScraper(),
-    LuvabetScraper(),
-    F12betScraper(),
-    SportyBetScraper(),
-    RealsScraper(),
-    HiperBetScraper(),
-    SeuBetScraper(),
-    H2betScraper(),
-    CaesarsScraper(),
-    BigScraper(),
-    ApostarScraper(),
-    BetBoomScraper(),
+    BetnacionalScraper(), SportingbetScraper(), NovibetScraper(),
+    BetssonScraper(), GalerabetScraper(), CasadeApostasScraper(),
+    BetSulScraper(), BetFastScraper(), VBetScraper(), SeteGamesScraper(),
+    ApostaGanhaScraper(), BrazinoSeteSeteSeteScraper(), ReidoPitacoScraper(),
+    BrasilBetScraper(), LuvabetScraper(), F12betScraper(), SportyBetScraper(),
+    RealsScraper(), HiperBetScraper(), SeuBetScraper(), H2betScraper(),
+    CaesarsScraper(), BigScraper(), ApostarScraper(), BetBoomScraper()
 ]
+
+# Semáforo limitando a 5 execuções simultâneas
+semaphore = asyncio.Semaphore(5)
+
+async def fetch_with_semaphore(bm):
+    async with semaphore:
+        return await bm.get_matches(global_context)
 
 @app.get("/")
 def read_root():
-    return {"message": "Bem-vindo à API de Casas de Apostas (Fase 2 - 25 sites)"}
+    return {"message": "Bem-vindo à API de Casas de Apostas (Fase 3 Otimizada)"}
 
 @app.get("/jogos", response_model=List[Match])
 async def get_all_matches():
-    """
-    Busca os jogos em todas as 25 casas de apostas registradas de forma simultânea via Playwright.
-    """
-    tasks = [bookmaker.get_matches() for bookmaker in bookmakers]
+    tasks = [fetch_with_semaphore(bm) for bm in bookmakers]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
     all_matches = []
@@ -81,6 +90,6 @@ async def get_all_matches():
         if isinstance(result, list):
             all_matches.extend(result)
         else:
-            print(f"Erro ao buscar dados de uma casa de aposta: {result}")
+            print(f"Erro na extração: {result}")
             
     return all_matches

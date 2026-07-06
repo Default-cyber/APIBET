@@ -7,7 +7,7 @@ class BaseBookmaker(ABC):
         self.name = "Base"
 
     @abstractmethod
-    async def get_matches(self, sport: str = "soccer") -> List[Match]:
+    async def get_matches(self, context, sport: str = "soccer") -> List[Match]:
         """
         Método assíncrono para buscar jogos e odds.
         Deve ser implementado por cada casa de aposta.
