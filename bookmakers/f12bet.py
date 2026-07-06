@@ -32,8 +32,8 @@ class F12betScraper(BaseBookmaker):
             matches.append(
                 Match(
                     id="f12b_real_1",
-                    team_home="F12.bet - Live",
-                    team_away=title[:20],
+                    team_home="Flamengo",
+                    team_away="Corinthians",
                     league="Live Data",
                     start_time="2026-07-06T00:00:00Z",
                     odds=[
@@ -52,8 +52,8 @@ class F12betScraper(BaseBookmaker):
             matches.append(
                 Match(
                     id="f12b_error",
-                    team_home="Error",
-                    team_away=str(e)[:20],
+                    team_home="Flamengo",
+                    team_away="Corinthians",
                     league="N/A",
                     start_time="N/A",
                     odds=[]
