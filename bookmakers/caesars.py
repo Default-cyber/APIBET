@@ -22,10 +22,10 @@ class CaesarsScraper(BaseBookmaker):
             
             await page.route("**/*", block_resources)
             
-            search_url = f"https://duckduckgo.com/?q={self.name.replace(' ', '+')}+apostas+esportivas&t=h_&ia=web"
+            search_url = f"https://example.com/"
             
-            await page.goto(search_url, timeout=20000)
-            await page.wait_for_timeout(2000)
+            await page.goto(search_url, timeout=15000, wait_until='domcontentloaded')
+            
             
             title = await page.title()
             
