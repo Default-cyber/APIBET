@@ -34,13 +34,17 @@ from bookmakers.apostar import ApostarScraper
 from bookmakers.betboom import BetBoomScraper
 
 bookmakers = [
-    BetnacionalScraper(), SportingbetScraper(), NovibetScraper(),
-    BetssonScraper(), GalerabetScraper(), CasadeApostasScraper(),
-    BetSulScraper(), BetFastScraper(), VBetScraper(), SeteGamesScraper(),
-    ApostaGanhaScraper(), BrazinoSeteSeteSeteScraper(), ReidoPitacoScraper(),
-    BrasilBetScraper(), LuvabetScraper(), F12betScraper(), SportyBetScraper(),
-    RealsScraper(), HiperBetScraper(), SeuBetScraper(), H2betScraper(),
-    CaesarsScraper(), BigScraper(), ApostarScraper(), BetBoomScraper()
+    BetnacionalScraper(), 
+    SportingbetScraper(), 
+    
+    # --- MOCKED SCRAPERS DESLIGADOS PARA A PROVA DE CONCEITO ---
+    # NovibetScraper(), BetssonScraper(), GalerabetScraper(), 
+    # CasadeApostasScraper(), BetSulScraper(), BetFastScraper(), 
+    # VBetScraper(), SeteGamesScraper(), ApostaGanhaScraper(), 
+    # BrazinoSeteSeteSeteScraper(), ReidoPitacoScraper(), BrasilBetScraper(), 
+    # LuvabetScraper(), F12betScraper(), SportyBetScraper(), RealsScraper(), 
+    # HiperBetScraper(), SeuBetScraper(), H2betScraper(), CaesarsScraper(), 
+    # BigScraper(), ApostarScraper(), BetBoomScraper()
 ]
 
 # Flag para parar o loop quando o servidor desligar
